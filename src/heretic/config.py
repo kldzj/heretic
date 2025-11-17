@@ -51,6 +51,16 @@ class Settings(BaseSettings):
         description="Number of input sequences to process in parallel (0 = auto).",
     )
 
+    min_batch_size: int = Field(
+        default=1,
+        description="Starting batch size when automatically determining the optimal batch size.",
+    )
+
+    batch_size_step: int = Field(
+        default=0,  # double each iteration
+        description="Increment for batch size during automatic determination. If 0, batch size doubles each iteration. If positive, batch size increases by this amount (e.g., 8 means: 8, 16, 24, 32...).",
+    )
+
     max_batch_size: int = Field(
         default=128,
         description="Maximum batch size to try when automatically determining the optimal batch size.",
