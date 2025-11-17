@@ -306,6 +306,8 @@ def run():
         trial.set_user_attr("kl_divergence", kl_divergence)
         trial.set_user_attr("refusals", refusals)
 
+        empty_cache()
+
         return score
 
     study = optuna.create_study(
