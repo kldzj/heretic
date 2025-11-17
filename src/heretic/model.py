@@ -86,6 +86,13 @@ class Model:
         dtype = self.model.dtype
 
         # Purge existing model object from memory to make space.
+        # Explicitly delete model layers to release references to modified weights
+        if hasattr(self.model, 'model'):
+            if hasattr(self.model.model, 'layers'):
+                del self.model.model.layers
+            elif hasattr(self.model.model, 'language_model') and hasattr(self.model.model.language_model, 'layers'):
+                del self.model.model.language_model.layers
+        
         self.model = None
         empty_cache()
 
@@ -202,21 +209,14 @@ class Model:
                     layer_refusal_direction,
                     layer_refusal_direction,
                 ).to(self.model.dtype)
-
-                # Cache projectors by device to avoid creating multiple copies.
-                projector_cache = {}
                 
                 for matrix in matrices:
                     # In-place subtraction is safe as we're not using Autograd.
                     # Ensure projector is on the same device as the matrix for multi-GPU support.
-                    device = matrix.device
-                    if device not in projector_cache:
-                        projector_cache[device] = projector.to(device)
-                    
-                    matrix.sub_(weight * (projector_cache[device] @ matrix))
-                
-                # Clear cache to free memory.
-                projector_cache.clear()
+                    device_projector = projector.to(matrix.device)
+                    matrix.sub_(weight * (device_projector @ matrix))
+                    # Delete device-specific projector immediately to free memory
+                    del device_projector
 
     def get_chat(self, prompt: str) -> list[dict[str, str]]:
         return [
