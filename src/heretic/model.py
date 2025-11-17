@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2025  Philipp Emanuel Weidmann <pew@worldwidemann.com>
 
+import gc
 import math
 from contextlib import suppress
 from dataclasses import dataclass
@@ -86,14 +87,12 @@ class Model:
         dtype = self.model.dtype
 
         # Purge existing model object from memory to make space.
-        # Explicitly delete model layers to release references to modified weights
-        if hasattr(self.model, 'model'):
-            if hasattr(self.model.model, 'layers'):
-                del self.model.model.layers
-            elif hasattr(self.model.model, 'language_model') and hasattr(self.model.model.language_model, 'layers'):
-                del self.model.model.language_model.layers
-        
+        del self.model
         self.model = None
+        
+        # Force garbage collection and clear cache
+        # to ensure all references are released
+        gc.collect()
         empty_cache()
 
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -217,14 +216,7 @@ class Model:
                     matrix.sub_(weight * (device_projector @ matrix))
                     # Delete device-specific projector immediately to free memory
                     del device_projector
-
-    def get_chat(self, prompt: str) -> list[dict[str, str]]:
-        return [
-            {"role": "system", "content": self.settings.system_prompt},
-            {"role": "user", "content": prompt},
-        ]
-
-    def generate(
+(
         self,
         prompts: list[str],
         **kwargs: Any,
